@@ -8,6 +8,8 @@ const (
 	MsgTypeSdpUpdate      string = "sdp_update"
 	MsgTypeCallTerminate  string = "call_terminate"
 	MsgTypeCallTerminated string = "call_terminated"
+	MsgTypeCallResume     string = "call_resume"
+	MsgTypeCallResumed    string = "call_resumed"
 )
 
 // SeppMsgTypes defines a mapping of message types
@@ -20,6 +22,8 @@ var SeppMsgTypes = map[string]func() MsgInterface{
 	MsgTypeSdpUpdate:      func() MsgInterface { return &MsgSdpUpdate{} },
 	MsgTypeCallTerminate:  func() MsgInterface { return &MsgCallTerminate{} },
 	MsgTypeCallTerminated: func() MsgInterface { return &MsgCallTerminated{} },
+	MsgTypeCallResume:     func() MsgInterface { return &MsgCallResume{} },
+	MsgTypeCallResumed:    func() MsgInterface { return &MsgCallResumed{} },
 }
 
 // MsgInterface define a messages which allows to get and modify
@@ -148,4 +152,28 @@ type MsgCallTerminatedData struct {
 type MsgCallTerminated struct {
 	MsgBase
 	Data MsgCallTerminatedData `json:"data"`
+}
+
+// MsgCallResumeData carries data for the call_resume message.
+type MsgCallResumeData struct {
+	Sdp    Sdp    `json:"sdp"`
+	CallID string `json:"call_id"`
+}
+
+// MsgCallResume message
+type MsgCallResume struct {
+	MsgBase
+	Data MsgCallResumeData `json:"data"`
+}
+
+// MsgCallResumedData data
+type MsgCallResumedData struct {
+	CallID string `json:"call_id"`
+	Sdp    Sdp    `json:"sdp"`
+}
+
+// MsgCallResumed message
+type MsgCallResumed struct {
+	MsgBase
+	Data MsgCallResumedData `json:"data"`
 }
