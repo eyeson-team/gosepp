@@ -2,28 +2,42 @@ package gosepp
 
 // Messages types
 const (
-	MsgTypeCallStart      string = "call_start"
-	MsgTypeCallRejected   string = "call_rejected"
-	MsgTypeCallAccepted   string = "call_accepted"
-	MsgTypeSdpUpdate      string = "sdp_update"
-	MsgTypeCallTerminate  string = "call_terminate"
-	MsgTypeCallTerminated string = "call_terminated"
-	MsgTypeCallResume     string = "call_resume"
-	MsgTypeCallResumed    string = "call_resumed"
+	MsgTypeCallStart        string = "call_start"
+	MsgTypeCallRejected     string = "call_rejected"
+	MsgTypeCallAccepted     string = "call_accepted"
+	MsgTypeSdpUpdate        string = "sdp_update"
+	MsgTypeCallTerminate    string = "call_terminate"
+	MsgTypeCallTerminated   string = "call_terminated"
+	MsgTypeCallResume       string = "call_resume"
+	MsgTypeCallResumed      string = "call_resumed"
+	MsgTypeChat             string = "chat"
+	MsgTypeSetPresenter     string = "set_presenter"
+	MsgTypeDesktopstreaming string = "desktopstreaming"
+	MsgTypeMuteVideo        string = "mute_video"
+	MsgTypeSourceUpdate     string = "source_update"
+	MsgTypeMemberlist       string = "memberlist"
+	MsgTypeRecording        string = "recording"
 )
 
 // SeppMsgTypes defines a mapping of message types
 // and an interface function which create a messages
 // adhering to the MsgInterface.
 var SeppMsgTypes = map[string]func() MsgInterface{
-	MsgTypeCallStart:      func() MsgInterface { return &MsgCallStart{} },
-	MsgTypeCallRejected:   func() MsgInterface { return &MsgCallRejected{} },
-	MsgTypeCallAccepted:   func() MsgInterface { return &MsgCallAccepted{} },
-	MsgTypeSdpUpdate:      func() MsgInterface { return &MsgSdpUpdate{} },
-	MsgTypeCallTerminate:  func() MsgInterface { return &MsgCallTerminate{} },
-	MsgTypeCallTerminated: func() MsgInterface { return &MsgCallTerminated{} },
-	MsgTypeCallResume:     func() MsgInterface { return &MsgCallResume{} },
-	MsgTypeCallResumed:    func() MsgInterface { return &MsgCallResumed{} },
+	MsgTypeCallStart:        func() MsgInterface { return &MsgCallStart{} },
+	MsgTypeCallRejected:     func() MsgInterface { return &MsgCallRejected{} },
+	MsgTypeCallAccepted:     func() MsgInterface { return &MsgCallAccepted{} },
+	MsgTypeSdpUpdate:        func() MsgInterface { return &MsgSdpUpdate{} },
+	MsgTypeCallTerminate:    func() MsgInterface { return &MsgCallTerminate{} },
+	MsgTypeCallTerminated:   func() MsgInterface { return &MsgCallTerminated{} },
+	MsgTypeCallResume:       func() MsgInterface { return &MsgCallResume{} },
+	MsgTypeCallResumed:      func() MsgInterface { return &MsgCallResumed{} },
+	MsgTypeChat:             func() MsgInterface { return &MsgChat{} },
+	MsgTypeSetPresenter:     func() MsgInterface { return &MsgSetPresenter{} },
+	MsgTypeDesktopstreaming: func() MsgInterface { return &MsgDesktopstreaming{} },
+	MsgTypeMuteVideo:        func() MsgInterface { return &MsgMuteVideo{} },
+	MsgTypeSourceUpdate:     func() MsgInterface { return &MsgSourceUpdate{} },
+	MsgTypeMemberlist:       func() MsgInterface { return &MsgMemberlist{} },
+	MsgTypeRecording:        func() MsgInterface { return &MsgRecording{} },
 }
 
 // MsgInterface define a messages which allows to get and modify
@@ -176,4 +190,109 @@ type MsgCallResumedData struct {
 type MsgCallResumed struct {
 	MsgBase
 	Data MsgCallResumedData `json:"data"`
+}
+
+type MsgChatData struct {
+	CallID    string `json:"call_id"`
+	ClientID  string `json:"cid"`
+	Content   string `json:"content"`
+	ID        string `json:"id"`
+	Timestamp string `json:"ts"`
+}
+
+type MsgChat struct {
+	MsgBase
+	Data MsgChatData `json:"data"`
+}
+
+type MsgSetPresenterData struct {
+	CallID   string `json:"call_id"`
+	On       bool   `json:"on"`
+	ClientID string `json:"cid"`
+}
+
+type MsgSetPresenter struct {
+	MsgBase
+	Data MsgSetPresenterData `json:"data"`
+}
+
+type MsgDesktopstreamingData struct {
+	CallID   string `json:"call_id"`
+	On       bool   `json:"on"`
+	ClientID string `json:"cid"`
+}
+
+type MsgDesktopstreaming struct {
+	MsgBase
+	Data MsgDesktopstreamingData `json:"data"`
+}
+
+type MsgMuteVideoData struct {
+	CallID   string `json:"call_id"`
+	On       bool   `json:"on"`
+	ClientID string `json:"cid"`
+}
+
+type MsgMuteVideo struct {
+	MsgBase
+	Data MsgMuteVideoData `json:"data"`
+}
+
+type Dimension struct {
+	Width  int `json:"w"`
+	Height int `json:"h"`
+	X      int `json:"x"`
+	Y      int `json:"y"`
+}
+
+type MsgSourceUpdateData struct {
+	CallID             string      `json:"call_id"`
+	AudioSources       []int       `json:"asrc"`
+	VideoSources       []int       `json:"vsrc"`
+	Broadcast          *bool       `json:"bcast,omitempty"`
+	Dimensions         []Dimension `json:"dims"`
+	Layout             int         `json:"l"`
+	Sources            []string    `json:"src"`
+	TextOverlay        *bool       `json:"tovl,omitempty"`
+	PresenterSrc       *int        `json:"psrc,omitempty"`
+	DesktopstreamerSrc *int        `json:"dsrc,omitempty"`
+}
+
+type MsgSourceUpdate struct {
+	MsgBase
+	Data MsgSourceUpdateData `json:"data"`
+}
+
+type MsgRecordingData struct {
+	CallID  string `json:"call_id"`
+	Active  bool   `json:"active"`
+	Enabled bool   `json:"enabled"`
+}
+
+type MsgRecording struct {
+	MsgBase
+	Data MsgRecordingData `json:"data"`
+}
+
+type Member struct {
+	ClientID string  `json:"cid"`
+	Platform *string `json:"p,omitempty"`
+}
+
+type Media struct {
+	MediaID string `json:"mid"`
+	PlayID  string `json:"playid"`
+}
+
+type MsgMemberlistData struct {
+	CallID string   `json:"call_id"`
+	Count  int      `json:"count"`
+	Add    []Member `json:"add"`
+	Del    []string `json:"del"`
+	Media  []Media  `json:"media"`
+}
+
+type MsgMemberlist struct {
+	MsgBase
+	Data MsgMemberlistData `json:"data"`
 }
