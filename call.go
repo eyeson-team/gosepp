@@ -10,14 +10,16 @@ type CallID string
 
 // Call is an abstraction of the gosepp messaging based interface.
 type Call struct {
-	sepp               *GoSepp
-	confID             string
-	clientID           string
-	callID             CallID
-	terminationHandler func()
-	sdpUpdateHandler   func(Sdp)
-	cancel             context.CancelFunc
-	termCh             chan bool
+	sepp                *GoSepp
+	confID              string
+	clientID            string
+	callID              CallID
+	terminationHandler  func()
+	sdpUpdateHandler    func(Sdp)
+	memberlistHandler   func(MsgMemberlistData)
+	sourceUpdateHandler func(MsgSourceUpdateData)
+	cancel              context.CancelFunc
+	termCh              chan bool
 }
 
 // NewCall initializes an instant of a call.
@@ -49,8 +51,22 @@ func (c *Call) SetSDPUpdateHandler(handler func(Sdp)) {
 	c.sdpUpdateHandler = handler
 }
 
+// SetMemberlistHandler set handler to be called on change of
+// the memberlist.
+func (c *Call) SetMemberlistHandler(handler func(MsgMemberlistData)) {
+	c.memberlistHandler = handler
+}
+
+// SetSourceUpdateHandler set handler to be called if the podium
+// layout changes.
+func (c *Call) SetSourceUpdateHandler(handler func(MsgSourceUpdateData)) {
+	c.sourceUpdateHandler = handler
+}
+
 func startDispatch(ctx context.Context, sepp *GoSepp,
-	termHandler func(), sdpUpdateHandler func(Sdp), termCh chan<- bool) {
+	termHandler func(), sdpUpdateHandler func(Sdp),
+	memberlistHandler func(MsgMemberlistData),
+	sourceUpdateHandler func(MsgSourceUpdateData), termCh chan<- bool) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -75,9 +91,16 @@ func startDispatch(ctx context.Context, sepp *GoSepp,
 				if sdpUpdateHandler != nil {
 					sdpUpdateHandler(m.Data.Sdp)
 				}
+			case *MsgMemberlist:
+				if memberlistHandler != nil {
+					memberlistHandler(m.Data)
+				}
+			case *MsgSourceUpdate:
+				if sourceUpdateHandler != nil {
+					sourceUpdateHandler(m.Data)
+				}
 			default:
 			}
-
 		}
 	}
 }
@@ -129,7 +152,8 @@ func (c *Call) Start(ctx context.Context, sdp Sdp, displayname string) (*CallID,
 			c.callID = callID
 			// start dispatcher as goroutine
 			go startDispatch(callCtx, c.sepp, c.terminationHandler,
-				c.sdpUpdateHandler, c.termCh)
+				c.sdpUpdateHandler, c.memberlistHandler, c.sourceUpdateHandler,
+				c.termCh)
 
 			return &callID, &m.Data.Sdp, nil
 		case *MsgCallRejected:
@@ -186,6 +210,26 @@ func (c *Call) UpdateSDP(ctx context.Context, sdp Sdp) error {
 		Data: MsgSdpUpdateData{
 			CallID: string(c.callID),
 			Sdp:    sdp},
+	}); err != nil {
+		return fmt.Errorf("failed to send message: %s", err)
+	}
+	return nil
+}
+
+// TurnOffVideo mutes or unmute video
+func (c *Call) TurnOffVideo(ctx context.Context, off bool) error {
+	if len(c.callID) == 0 {
+		return fmt.Errorf("no active call")
+	}
+	if err := c.sepp.SendMsg(MsgMuteVideo{
+		MsgBase: MsgBase{
+			Type: MsgTypeMuteVideo,
+			From: c.clientID,
+			To:   c.confID,
+		},
+		Data: MsgMuteVideoData{
+			CallID: string(c.callID),
+			On:     off},
 	}); err != nil {
 		return fmt.Errorf("failed to send message: %s", err)
 	}
