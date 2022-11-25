@@ -20,12 +20,18 @@ type Call struct {
 	sourceUpdateHandler func(MsgSourceUpdateData)
 	cancel              context.CancelFunc
 	termCh              chan bool
+	logger              Logger
 }
 
 // NewCall initializes an instant of a call.
-func NewCall(callInfo CallInfoInterface) (*Call, error) {
+func NewCall(callInfo CallInfoInterface, logger Logger) (*Call, error) {
 
-	sepp, err := NewGoSepp(callInfo.GetSigEndpoint(), callInfo.GetAuthToken())
+	if logger == nil {
+		logger = &silentLogger{}
+	}
+
+	sepp, err := NewGoSepp(callInfo.GetSigEndpoint(), callInfo.GetAuthToken(),
+		nil, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +39,7 @@ func NewCall(callInfo CallInfoInterface) (*Call, error) {
 		confID:   callInfo.GetConfID(),
 		clientID: callInfo.GetClientID(),
 		termCh:   make(chan bool),
+		logger:   logger,
 	}, nil
 }
 
@@ -63,7 +70,7 @@ func (c *Call) SetSourceUpdateHandler(handler func(MsgSourceUpdateData)) {
 	c.sourceUpdateHandler = handler
 }
 
-func startDispatch(ctx context.Context, sepp *GoSepp,
+func startDispatch(logger Logger, ctx context.Context, sepp *GoSepp,
 	termHandler func(), sdpUpdateHandler func(Sdp),
 	memberlistHandler func(MsgMemberlistData),
 	sourceUpdateHandler func(MsgSourceUpdateData), termCh chan<- bool) {
@@ -73,6 +80,7 @@ func startDispatch(ctx context.Context, sepp *GoSepp,
 			return
 		case msg, ok := <-sepp.RcvCh():
 			if !ok {
+				logger.Info("Channel closed. Stopping dispatch")
 				return
 			}
 			// dispatch messages
@@ -151,7 +159,7 @@ func (c *Call) Start(ctx context.Context, sdp Sdp, displayname string) (*CallID,
 			callID := CallID(m.Data.CallID)
 			c.callID = callID
 			// start dispatcher as goroutine
-			go startDispatch(callCtx, c.sepp, c.terminationHandler,
+			go startDispatch(c.logger, callCtx, c.sepp, c.terminationHandler,
 				c.sdpUpdateHandler, c.memberlistHandler, c.sourceUpdateHandler,
 				c.termCh)
 

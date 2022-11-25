@@ -19,7 +19,8 @@ func TestSeppLive(t *testing.T) {
 	}
 
 	seppServerAddress := "sig.eyeson.com"
-	sepp, err := NewGoSepp(fmt.Sprintf("wss://%s/call", seppServerAddress), liveToken)
+	sepp, err := NewGoSepp(fmt.Sprintf("wss://%s/call", seppServerAddress),
+		liveToken, nil, nil)
 	if err != nil {
 		t.Fatalf("failed: %s", err)
 	}

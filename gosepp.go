@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"sync"
@@ -15,6 +14,23 @@ import (
 
 	"github.com/gorilla/websocket"
 )
+
+// Logger simple logging interface
+type Logger interface {
+	Error(format string, v ...interface{})
+	Warn(format string, v ...interface{})
+	Info(format string, v ...interface{})
+	Debug(format string, v ...interface{})
+	Trace(format string, v ...interface{})
+}
+
+type silentLogger struct{}
+
+func (sl *silentLogger) Error(format string, v ...interface{}) {}
+func (sl *silentLogger) Warn(format string, v ...interface{})  {}
+func (sl *silentLogger) Info(format string, v ...interface{})  {}
+func (sl *silentLogger) Debug(format string, v ...interface{}) {}
+func (sl *silentLogger) Trace(format string, v ...interface{}) {}
 
 const SeppEndpoint string = "wss://sig.eyeson.com/call"
 
@@ -31,35 +47,23 @@ type GoSepp struct {
 	connectStatusCh   chan bool
 	receiverCtxCancel context.CancelFunc
 	authToken         string
+	logger            Logger
 }
 
 // NewGoSepp returns a new GoSepp client.
-func NewGoSepp(baseURL, authToken string) (*GoSepp, error) {
-	return NewGoSeppCustomCerts(baseURL, "", "", "", false, true, authToken)
-}
-
-// NewGoSeppCustomCerts returns a new GoSepp client using custom certs.
-func NewGoSeppCustomCerts(baseURL string, certFile, keyFile, caFile string,
-	insecure bool, useSystemCAPool bool, authToken string) (*GoSepp, error) {
-	var tlsConfig *tls.Config
-	var err error
-	if len(certFile) > 0 && len(keyFile) > 0 {
-		tlsConfig, err = createTLSConfig(certFile, keyFile, caFile, useSystemCAPool)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		tlsConfig = &tls.Config{}
-	}
-
-	if insecure {
-		tlsConfig.InsecureSkipVerify = insecure
-	}
+func NewGoSepp(baseURL, authToken string, tlsConfig *tls.Config,
+	logger Logger) (*GoSepp, error) {
 	d := websocket.Dialer{TLSClientConfig: tlsConfig}
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
 	}
+
+	// if logger ist not set, use the silentLogger
+	if logger == nil {
+		logger = &silentLogger{}
+	}
+
 	receiverCtx, receiverCancel := context.WithCancel(context.Background())
 	rtm := &GoSepp{
 		wsURL:             parsedURL,
@@ -69,14 +73,16 @@ func NewGoSeppCustomCerts(baseURL string, certFile, keyFile, caFile string,
 		connectStatusCh:   make(chan bool, 1),
 		receiverCtxCancel: receiverCancel,
 		run:               true,
-		authToken:         authToken}
+		authToken:         authToken,
+		logger:            logger}
 
 	rtm.start(receiverCtx)
 	rtm.sender()
 	return rtm, nil
 }
 
-func createTLSConfig(certFile, keyFile, caFile string, useSystemCAPool bool) (*tls.Config, error) {
+func CreateTLSConfig(certFile, keyFile, caFile string, useSystemCAPool bool,
+	insecure bool) (*tls.Config, error) {
 	// load cert, key, and CA-file
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
@@ -98,7 +104,7 @@ func createTLSConfig(certFile, keyFile, caFile string, useSystemCAPool bool) (*t
 			}
 			caCertPool = x509.NewCertPool()
 			if !caCertPool.AppendCertsFromPEM(caCert) {
-				fmt.Println("Failed to append CAcert")
+				return nil, fmt.Errorf("Failed to append CAcert")
 			}
 		}
 	}
@@ -109,6 +115,11 @@ func createTLSConfig(certFile, keyFile, caFile string, useSystemCAPool bool) (*t
 		RootCAs:      caCertPool,
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 	}
+
+	if insecure {
+		tlsConfig.InsecureSkipVerify = insecure
+	}
+
 	tlsConfig.BuildNameToCertificate()
 	return tlsConfig, nil
 }
@@ -190,7 +201,7 @@ func (rtm *GoSepp) sender() {
 				if wsClient := rtm.wsClient; wsClient != nil {
 					err := wsClient.WriteMessage(websocket.PingMessage, []byte("keepalive"))
 					if err != nil {
-						log.Println("failed to send ping.")
+						rtm.logger.Warn("failed to send ping")
 					}
 				}
 			case msg, ok := <-rtm.sendCh:
@@ -201,9 +212,7 @@ func (rtm *GoSepp) sender() {
 				if wsClient := rtm.wsClient; wsClient != nil {
 					err := wsClient.WriteMessage(websocket.TextMessage, msg)
 					if err != nil {
-						log.Println("failed to send.")
-					} else {
-						//log.Printf("Sent message: %s\n", msg)
+						rtm.logger.Warn("failed to send.")
 					}
 				}
 			}
@@ -220,7 +229,7 @@ func (rtm *GoSepp) start(ctx context.Context) {
 			// try to connect
 			err := rtm.connect(ctx)
 			if err != nil {
-				log.Printf("Failed to connect to %s [%s]. Retrying.", rtm.wsURL, err)
+				rtm.logger.Warn("Failed to connect to %s [%s]. Retrying.", rtm.wsURL, err)
 				rtm.connectStatusCh <- false
 				if rtm.run {
 					time.Sleep(2 * time.Second)
@@ -233,36 +242,34 @@ func (rtm *GoSepp) start(ctx context.Context) {
 			for {
 				messageType, message, err := rtm.wsClient.ReadMessage()
 				if err != nil {
-					log.Println("read failed with:", err)
+					rtm.logger.Warn("read failed with: %s.", err)
+					// Note, breaking the inner for loop here, triggering
+					// a new reconnect.
 					break
 				}
-
-				//log.Println("Received:", string(message))
 
 				if messageType == websocket.TextMessage {
 					// parse
 					var msgBase MsgBase
 					err := json.Unmarshal(message, &msgBase)
 					if err != nil {
-						log.Printf("Failed to unmarshal [%s].\n", err)
+						rtm.logger.Warn("Failed to unmarshal [%s].\n", err)
 						continue
 					}
 					msgInitFunc, ok := SeppMsgTypes[msgBase.Type]
 					if !ok {
-						log.Printf("Message-type %s not supported.", msgBase.Type)
+						rtm.logger.Warn("Message-type %s not supported.", msgBase.Type)
 						continue
 					}
 					interf := msgInitFunc()
 					err = json.Unmarshal(message, interf)
 					if err != nil {
-						log.Println("Failed to unmarshal.")
+						rtm.logger.Warn("Failed to unmarshal.")
 						continue
 					}
 					rtm.rcvCh <- interf
 				}
-
 			}
-
 		}
 	}()
 }
