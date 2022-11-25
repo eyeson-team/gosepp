@@ -32,6 +32,7 @@ func (sl *silentLogger) Info(format string, v ...interface{})  {}
 func (sl *silentLogger) Debug(format string, v ...interface{}) {}
 func (sl *silentLogger) Trace(format string, v ...interface{}) {}
 
+// SeppEndpoint set default endpoint
 const SeppEndpoint string = "wss://sig.eyeson.com/call"
 
 // GoSepp Confserver signaling.
@@ -81,6 +82,8 @@ func NewGoSepp(baseURL, authToken string, tlsConfig *tls.Config,
 	return rtm, nil
 }
 
+// CreateTLSConfig helper to create tls-config depending on configuration
+// parameters.
 func CreateTLSConfig(certFile, keyFile, caFile string, useSystemCAPool bool,
 	insecure bool) (*tls.Config, error) {
 	// load cert, key, and CA-file

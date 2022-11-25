@@ -70,7 +70,7 @@ func (c *Call) SetSourceUpdateHandler(handler func(MsgSourceUpdateData)) {
 	c.sourceUpdateHandler = handler
 }
 
-func startDispatch(logger Logger, ctx context.Context, sepp *GoSepp,
+func startDispatch(ctx context.Context, logger Logger, sepp *GoSepp,
 	termHandler func(), sdpUpdateHandler func(Sdp),
 	memberlistHandler func(MsgMemberlistData),
 	sourceUpdateHandler func(MsgSourceUpdateData), termCh chan<- bool) {
@@ -159,7 +159,7 @@ func (c *Call) Start(ctx context.Context, sdp Sdp, displayname string) (*CallID,
 			callID := CallID(m.Data.CallID)
 			c.callID = callID
 			// start dispatcher as goroutine
-			go startDispatch(c.logger, callCtx, c.sepp, c.terminationHandler,
+			go startDispatch(callCtx, c.logger, c.sepp, c.terminationHandler,
 				c.sdpUpdateHandler, c.memberlistHandler, c.sourceUpdateHandler,
 				c.termCh)
 

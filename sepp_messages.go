@@ -192,6 +192,7 @@ type MsgCallResumed struct {
 	Data MsgCallResumedData `json:"data"`
 }
 
+// MsgChatData data
 type MsgChatData struct {
 	CallID    string `json:"call_id"`
 	ClientID  string `json:"cid"`
@@ -200,44 +201,52 @@ type MsgChatData struct {
 	Timestamp string `json:"ts"`
 }
 
+// MsgChat chat message
 type MsgChat struct {
 	MsgBase
 	Data MsgChatData `json:"data"`
 }
 
+// MsgSetPresenterData data
 type MsgSetPresenterData struct {
 	CallID   string `json:"call_id"`
 	On       bool   `json:"on"`
 	ClientID string `json:"cid"`
 }
 
+// MsgSetPresenter message
 type MsgSetPresenter struct {
 	MsgBase
 	Data MsgSetPresenterData `json:"data"`
 }
 
+// MsgDesktopstreamingData data
 type MsgDesktopstreamingData struct {
 	CallID   string `json:"call_id"`
 	On       bool   `json:"on"`
 	ClientID string `json:"cid"`
 }
 
+// MsgDesktopstreaming message
 type MsgDesktopstreaming struct {
 	MsgBase
 	Data MsgDesktopstreamingData `json:"data"`
 }
 
+// MsgMuteVideoData data
 type MsgMuteVideoData struct {
 	CallID   string `json:"call_id"`
 	On       bool   `json:"on"`
 	ClientID string `json:"cid"`
 }
 
+// MsgMuteVideo message
 type MsgMuteVideo struct {
 	MsgBase
 	Data MsgMuteVideoData `json:"data"`
 }
 
+// Dimension specifying position on podium
 type Dimension struct {
 	Width  int `json:"w"`
 	Height int `json:"h"`
@@ -245,6 +254,7 @@ type Dimension struct {
 	Y      int `json:"y"`
 }
 
+// MsgSourceUpdateData holds data for the podium configuration
 type MsgSourceUpdateData struct {
 	CallID             string      `json:"call_id"`
 	AudioSources       []int       `json:"asrc"`
@@ -258,32 +268,38 @@ type MsgSourceUpdateData struct {
 	DesktopstreamerSrc *int        `json:"dsrc,omitempty"`
 }
 
+// MsgSourceUpdate message
 type MsgSourceUpdate struct {
 	MsgBase
 	Data MsgSourceUpdateData `json:"data"`
 }
 
+// MsgRecordingData recording status stuff
 type MsgRecordingData struct {
 	CallID  string `json:"call_id"`
 	Active  bool   `json:"active"`
 	Enabled bool   `json:"enabled"`
 }
 
+// MsgRecording message
 type MsgRecording struct {
 	MsgBase
 	Data MsgRecordingData `json:"data"`
 }
 
+// Member participant on memberlist
 type Member struct {
 	ClientID string  `json:"cid"`
 	Platform *string `json:"p,omitempty"`
 }
 
+// Media media on memberlist
 type Media struct {
 	MediaID string `json:"mid"`
 	PlayID  string `json:"playid"`
 }
 
+// MsgMemberlistData memberlist data
 type MsgMemberlistData struct {
 	CallID string   `json:"call_id"`
 	Count  int      `json:"count"`
@@ -292,6 +308,7 @@ type MsgMemberlistData struct {
 	Media  []Media  `json:"media"`
 }
 
+// MsgMemberlist message
 type MsgMemberlist struct {
 	MsgBase
 	Data MsgMemberlistData `json:"data"`
