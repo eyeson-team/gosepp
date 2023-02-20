@@ -101,6 +101,7 @@ type Sdp struct {
 type MsgCallStartData struct {
 	Sdp         Sdp    `json:"sdp"`
 	DisplayName string `json:"display_name"`
+	MuteVideo   bool   `json:"mute_video"`
 }
 
 // MsgCallStart message
