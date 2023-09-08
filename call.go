@@ -2,7 +2,10 @@ package gosepp
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 )
 
 // CallID custom callID type
@@ -21,26 +24,62 @@ type Call struct {
 	cancel              context.CancelFunc
 	termCh              chan bool
 	logger              Logger
+	customCAFile        string
 }
 
-// NewCall initializes an instant of a call.
-func NewCall(callInfo CallInfoInterface, logger Logger) (*Call, error) {
+// CallOption defines the options interface
+type CallOption func(*Call)
+
+// WithCustomCAFile This option configures this library
+// to use a custom-CA instead of the systemCA.
+func WithCustomCAFile(customCAFile string) CallOption {
+	return func(c *Call) {
+		c.customCAFile = customCAFile
+	}
+}
+
+// NewCall initializes an instantce of a call.
+func NewCall(callInfo CallInfoInterface, logger Logger, options ...CallOption) (*Call, error) {
 
 	if logger == nil {
 		logger = &silentLogger{}
 	}
 
-	sepp, err := NewGoSepp(callInfo.GetSigEndpoint(), callInfo.GetAuthToken(),
-		nil, logger)
-	if err != nil {
-		return nil, err
-	}
-	return &Call{sepp: sepp,
+	call := &Call{
 		confID:   callInfo.GetConfID(),
 		clientID: callInfo.GetClientID(),
 		termCh:   make(chan bool),
 		logger:   logger,
-	}, nil
+	}
+
+	for _, opt := range options {
+		opt(call)
+	}
+
+	var tlsConfig *tls.Config
+	if len(call.customCAFile) > 0 {
+		// Load CA cert
+		caCert, err := ioutil.ReadFile(call.customCAFile)
+		if err != nil {
+			return nil, err
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("Failed to append CAcert")
+		}
+		tlsConfig = &tls.Config{
+			RootCAs: caCertPool,
+		}
+	}
+
+	sepp, err := NewGoSepp(callInfo.GetSigEndpoint(), callInfo.GetAuthToken(),
+		tlsConfig, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	call.sepp = sepp
+	return call, nil
 }
 
 // SetTerminatedHandler sets the termination handler which is
