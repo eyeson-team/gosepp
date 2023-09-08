@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/eyeson-team/gosepp/v2"
+	"github.com/eyeson-team/gosepp/v3"
 )
 
 func main() {
@@ -13,7 +13,7 @@ func main() {
 	sdp := "dummy-sdp"
 	jwtToken := "signed-token"
 
-	sepp, err := gosepp.NewGoSepp("wss://sig.eyeson.com/call", jwtToken)
+	sepp, err := gosepp.NewGoSepp("wss://sig.eyeson.com/call", jwtToken, nil, nil)
 	if err != nil {
 		log.Fatalf("failed: %s", err)
 	}

@@ -38,7 +38,7 @@ func WithCustomCAFile(customCAFile string) CallOption {
 	}
 }
 
-// NewCall initializes an instantce of a call.
+// NewCall initializes an instance of a call.
 func NewCall(callInfo CallInfoInterface, logger Logger, options ...CallOption) (*Call, error) {
 
 	if logger == nil {

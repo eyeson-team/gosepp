@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/eyeson-team/gosepp/v2"
+	"github.com/eyeson-team/gosepp/v3"
 )
 
 func main() {
@@ -22,7 +22,7 @@ func main() {
 		ConfID:      *confIDFlag,
 	}
 
-	call, err := gosepp.NewCall(ci)
+	call, err := gosepp.NewCall(ci, nil)
 	if err != nil {
 		log.Fatalf("failed: %s", err)
 	}
