@@ -186,30 +186,35 @@ func (c *Call) Start(ctx context.Context, sdp Sdp, displayname string) (*CallID,
 		return nil, nil, fmt.Errorf("failed to send message: %s", err)
 	}
 
-	// wait for call accepted or rejected
-	select {
-	case msg, ok := <-c.sepp.RcvCh():
-		if !ok {
-			return nil, nil, fmt.Errorf("Failed to receive")
-		}
-		// dispatch messages
-		switch m := msg.(type) {
-		case *MsgCallAccepted:
-			callID := CallID(m.Data.CallID)
-			c.callID = callID
-			// start dispatcher as goroutine
-			go startDispatch(callCtx, c.logger, c.sepp, c.terminationHandler,
-				c.sdpUpdateHandler, c.memberlistHandler, c.sourceUpdateHandler,
-				c.termCh)
+	for {
+		// wait for call accepted or rejected
+		select {
+		case msg, ok := <-c.sepp.RcvCh():
+			if !ok {
+				return nil, nil, fmt.Errorf("Failed to receive")
+			}
+			// dispatch messages
+			switch m := msg.(type) {
+			case *MsgMemberlist:
+				// Continue if a memberlist was received.
+				continue
+			case *MsgCallAccepted:
+				callID := CallID(m.Data.CallID)
+				c.callID = callID
+				// start dispatcher as goroutine
+				go startDispatch(callCtx, c.logger, c.sepp, c.terminationHandler,
+					c.sdpUpdateHandler, c.memberlistHandler, c.sourceUpdateHandler,
+					c.termCh)
 
-			return &callID, &m.Data.Sdp, nil
-		case *MsgCallRejected:
-			return nil, nil, fmt.Errorf("Call rejected: %d", m.Data.RejectCode)
-		default:
-			return nil, nil, fmt.Errorf("Protocol error. Msg-type: %s", m.GetType())
+				return &callID, &m.Data.Sdp, nil
+			case *MsgCallRejected:
+				return nil, nil, fmt.Errorf("Call rejected: %d", m.Data.RejectCode)
+			default:
+				return nil, nil, fmt.Errorf("Protocol error. Msg-type: %s", m.GetType())
+			}
+		case <-callCtx.Done():
+			return nil, nil, fmt.Errorf("Timeout")
 		}
-	case <-callCtx.Done():
-		return nil, nil, fmt.Errorf("Timeout")
 	}
 
 }
