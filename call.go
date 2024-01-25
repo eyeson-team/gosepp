@@ -39,9 +39,9 @@ func WithCustomCAFile(customCAFile string) CallOption {
 	}
 }
 
-// WithPlatfromVersion allows to specify the platform-version
+// WithPlatformVersion allows to specify the platform-version
 // string which will be used during call-setup.
-func WithPlatfromVersion(platform string) CallOption {
+func WithPlatformVersion(platform string) CallOption {
 	return func(c *Call) {
 		c.platform = platform
 	}
