@@ -25,6 +25,7 @@ type Call struct {
 	termCh              chan bool
 	logger              Logger
 	customCAFile        string
+	platform            string
 }
 
 // CallOption defines the options interface
@@ -35,6 +36,14 @@ type CallOption func(*Call)
 func WithCustomCAFile(customCAFile string) CallOption {
 	return func(c *Call) {
 		c.customCAFile = customCAFile
+	}
+}
+
+// WithPlatfromVersion allows to specify the platform-version
+// string which will be used during call-setup.
+func WithPlatfromVersion(platform string) CallOption {
+	return func(c *Call) {
+		c.platform = platform
 	}
 }
 
@@ -181,7 +190,9 @@ func (c *Call) Start(ctx context.Context, sdp Sdp, displayname string) (*CallID,
 		},
 		Data: MsgCallStartData{
 			Sdp:         sdp,
-			DisplayName: displayname},
+			DisplayName: displayname,
+			Platform:    c.platform,
+		},
 	}); err != nil {
 		return nil, nil, fmt.Errorf("failed to send message: %s", err)
 	}
